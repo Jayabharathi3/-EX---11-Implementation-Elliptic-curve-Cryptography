@@ -4,101 +4,110 @@
   Implementation of Elliptic Curve Cryptography using a Standard Library.
 
 ## ALGORITHM:
-1.Start the program and import the required libraries.
-2.Define the elliptic curve parameters (a, b) and prime modulus (p) that define the curve 
+    1.Start the program and import the required libraries.
+    2.Define the elliptic curve parameters (a, b) and prime modulus (p) that define the curve 
 (y^2=x^3+ax+b)
-3.Implement the point addition and point doubling operations for elliptic curves.
-4.Implement scalar multiplication to perform cryptographic operations.
-5.Use the scalar multiplication function to generate a public key from a private key.
-6.Use ECC to perform key exchange or encryption.
-7.End the program.
+    3.Implement the point addition and point doubling operations for elliptic curves.
+    4.Implement scalar multiplication to perform cryptographic operations.
+    5.Use the scalar multiplication function to generate a public key from a private key.
+    6.Use ECC to perform key exchange or encryption.
+    7.End the program.
 
 ## PROGRAM:
 
 ```C
-#include <stdio.h>
+ #include <stdio.h>
+struct Point 
+{
+    long long x;
+    long long y;
+};
 
-// Define the elliptic curve parameters: y^2 = x^3 + ax + b
-#define CURVE_A 2
-#define CURVE_B 3
-#define PRIME_P 17 
-
-// Define a structure for points on the elliptic curve
-typedef struct {
-    int x;
-    int y;
-} Point;
-
-// Base point G on the curve
-Point G = {5, 1};
-
-// Function to perform modular inverse
-int modInverse(int k, int prime) {
-    for (int x = 1; x < prime; x++) {
-        if ((k * x) % prime == 1)
-            return x;
+long long mod_inverse(long long a, long long p) 
+{
+    long long m0 = p, t, q;
+    long long x0 = 0, x1 = 1;
+    if (p == 1) return 0;
+    while (a > 1) 
+    {
+        q = a / p;
+        t = p;
+        p = a % p;
+        a = t;
+        t = x0;
+        x0 = x1 - q * x0;
+        x1 = t;
     }
-    return -1;
+    if (x1 < 0) x1 += m0;
+    return x1;
 }
 
-// Function to perform point addition on the elliptic curve
-Point pointAdd(Point P, Point Q) {
-    Point R;
-    int slope = ((Q.y - P.y) * modInverse(Q.x - P.x, PRIME_P)) % PRIME_P;
-
-    R.x = (slope * slope - P.x - Q.x) % PRIME_P;
-    R.y = (slope * (P.x - R.x) - P.y) % PRIME_P;
-
-    if (R.x < 0) R.x += PRIME_P;
-    if (R.y < 0) R.y += PRIME_P;
-
+struct Point point_addition(struct Point P, struct Point Q, long long a, long long p)
+{
+    struct Point R;
+    if (P.x == Q.x && P.y == Q.y) 
+    {
+        long long s = (3 * P.x * P.x + a) * mod_inverse(2 * P.y, p) % p;
+        R.x = (s * s - 2 * P.x) % p;
+        R.y = (s * (P.x - R.x) - P.y) % p;
+    } 
+    else 
+    {
+        long long s = (Q.y - P.y) * mod_inverse(Q.x - P.x, p) % p;
+        R.x = (s * s - P.x - Q.x) % p;
+        R.y = (s * (P.x - R.x) - P.y) % p;
+    }
+    if (R.x < 0) R.x += p;
+    if (R.y < 0) R.y += p;
     return R;
 }
 
-// Function for scalar multiplication: n*P (repeated addition)
-Point scalarMult(Point P, int n) {
-    Point result = P;
-    for (int i = 1; i < n; i++) {
-        result = pointAdd(result, P);
+struct Point scalar_multiplication(struct Point P, long long k, long long a, long long p) 
+{
+    struct Point R = P;
+    k = k - 1; 
+    while (k > 0)
+    {
+        if (k % 2 == 1) 
+        {
+            R = point_addition(R, P, a, p);
+        }
+        P = point_addition(P, P, a, p);
+        k /= 2;
     }
-    return result;
+    return R;
 }
 
-int main() {
-    prin
-    int privateKey = 7;  // A simple private key
-    Point publicKey = scalarMult(G, privateKey);  // Public key = privateKey * G
-
-    // Display the private and public keys
-    printf("Private Key: %d\n", privateKey);
-    printf("Public Key: (%d, %d)\n", publicKey.x, publicKey.y);
-
-    // Define a message point on the curve
-    Point message = {6, 3};
-    printf("Original Message: (%d, %d)\n", message.x, message.y);
-
-    // Encrypt: C1 = k*G, C2 = M + k*Q
-    int k = 5;  // Random value
-    Point C1 = scalarMult(G, k);
-    Point C2 = pointAdd(message, scalarMult(publicKey, k));
-    printf("Ciphertext C1: (%d, %d)\n", C1.x, C1.y);
-    printf("Ciphertext C2: (%d, %d)\n", C2.x, C2.y);
-
-    // Decrypt: M = C2 - d*C1
-    Point temp = scalarMult(C1, privateKey);
-    temp.y = -temp.y % PRIME_P;  
-    if (temp.y < 0) temp.y += PRIME_P;
-
-    Point decryptedMessage = pointAdd(C2, temp);
-    printf("Decrypted Message: (%d, %d)\n", decryptedMessage.x, decryptedMessage.y);
-
+int main() 
+{
+    long long a, b, p;  
+    struct Point G;     
+    long long private_key;
+    struct Point public_key;
+    printf("Enter the value of 'a' for the elliptic curve equation y^2 = x^3 + ax + b (mod p): ");
+    scanf("%lld", &a);
+    printf("Enter the value of 'b' for the elliptic curve equation y^2 = x^3 + ax + b (mod p): ");
+    scanf("%lld", &b);
+    printf("Enter the prime number 'p' for the finite field (modulus): ");
+    scanf("%lld", &p);
+    printf("Enter the x-coordinate of the base point G: ");
+    scanf("%lld", &G.x);
+    printf("Enter the y-coordinate of the base point G: ");
+    scanf("%lld", &G.y);
+    printf("Enter the private key: ");
+    scanf("%lld", &private_key);
+    public_key = scalar_multiplication(G, private_key, a, p);
+    printf("\nElliptic Curve: y^2 = x^3 + %lldx + %lld (mod %lld)\n", a, b, p);
+    printf("Base Point G: (%lld, %lld)\n", G.x, G.y);
+    printf("Private Key: %lld\n", private_key);
+    printf("Public Key: (%lld, %lld)\n", public_key.x, public_key.y);
     return 0;
 }
     
 ```
 
 ## OUTPUT:
-![image](https://github.com/user-attachments/assets/87a9cebc-cef6-461f-bc63-317e0f9a0273)
+![image](https://github.com/user-attachments/assets/8595b593-b6a4-4ba9-bfdb-71837d6cd126)
 
 
 ## RESULT:
